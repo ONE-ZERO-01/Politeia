@@ -1,0 +1,50 @@
+# Build
+build/
+cmake-build-*/
+compile_commands.json
+
+# Output (all case outputs live under examples/*_output/)
+examples/*_output/
+
+# HYDE 1:1 baseline IC (generate locally; hundreds of MB)
+examples/genesis_hyde_baseline.csv
+*.h5
+*.hdf5
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Python cache
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test temp files
+test_config_tmp.cfg
+
+# Generated presentations (keep templates)
+test_pptx.pptx
+
+# Prompt files
+prompt.md
+
+# Data (generated locally)
+data/
+
+# Raw papers (too large for git)
+raw/papers/
+raw/datasets/
+
+# Large generated initial conditions (keep small ones)
+examples/genesis_100k.csv
+examples/genesis_hyde_100k.csv
+examples/historical_100k.csv
+env.sh
+lsan_suppressions.txt
