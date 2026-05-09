@@ -20,7 +20,7 @@ bool parse_bool(const std::string& val) {
     return val == "true" || val == "1" || val == "yes";
 }
 
-void apply_key_value(SimConfig& cfg, const std::string& key, const std::string& val) {
+bool apply_key_value(SimConfig& cfg, const std::string& key, const std::string& val) {
     // Domain
     if (key == "domain_xmin") cfg.domain_xmin = std::stod(val);
     else if (key == "domain_xmax") cfg.domain_xmax = std::stod(val);
@@ -213,6 +213,8 @@ void apply_key_value(SimConfig& cfg, const std::string& key, const std::string& 
     // MPI
     else if (key == "mpi_px") cfg.mpi_px = std::stoi(val);
     else if (key == "mpi_py") cfg.mpi_py = std::stoi(val);
+    else return false;
+    return true;
 }
 
 } // namespace
@@ -226,6 +228,7 @@ SimConfig load_config(const std::string& filepath) {
 
     std::string line;
     int lineno = 0;
+    int unknown_count = 0;
     while (std::getline(file, line)) {
         ++lineno;
         line = trim(line);
@@ -240,7 +243,21 @@ SimConfig load_config(const std::string& filepath) {
 
         auto key = trim(line.substr(0, eq_pos));
         auto val = trim(line.substr(eq_pos + 1));
-        apply_key_value(cfg, key, val);
+        try {
+            if (!apply_key_value(cfg, key, val)) {
+                std::cerr << "Warning: unknown config key '" << key
+                          << "' at line " << lineno << " (ignored)\n";
+                ++unknown_count;
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "Error parsing config key '" << key << "' = '" << val
+                      << "' at line " << lineno << ": " << e.what() << "\n";
+            throw;
+        }
+    }
+    if (unknown_count > 0) {
+        std::cerr << "Config: " << unknown_count << " unknown key(s) ignored. "
+                  << "Check for typos.\n";
     }
     return cfg;
 }

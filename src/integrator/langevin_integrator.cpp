@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <cstring>
+#include <vector>
 
 #ifdef POLITEIA_USE_OPENMP
 #include <omp.h>
@@ -115,9 +116,13 @@ IntegratorState LangevinIntegrator::step(ParticleData& particles, CellList& cell
     // dp = (dt/2)*F − (dt/2)*γ*p + σ*sqrt(dt/2)*N(0,1)
 #ifdef POLITEIA_USE_OPENMP
     if (noise_amp_ > 0.0) {
+        const int nthreads = omp_get_max_threads();
+        std::vector<std::uint64_t> seeds(nthreads);
+        for (int t = 0; t < nthreads; ++t) seeds[t] = rng_();
+
         #pragma omp parallel
         {
-            std::mt19937_64 thread_rng(rng_() + omp_get_thread_num());
+            std::mt19937_64 thread_rng(seeds[omp_get_thread_num()]);
             std::normal_distribution<Real> thread_normal(0.0, 1.0);
             #pragma omp for schedule(static)
             for (Index i = 0; i < n * SPATIAL_DIM; ++i) {
@@ -156,9 +161,13 @@ IntegratorState LangevinIntegrator::step(ParticleData& particles, CellList& cell
     // --- Step 5: Second half-step momentum update ---
 #ifdef POLITEIA_USE_OPENMP
     if (noise_amp_ > 0.0) {
+        const int nthreads = omp_get_max_threads();
+        std::vector<std::uint64_t> seeds(nthreads);
+        for (int t = 0; t < nthreads; ++t) seeds[t] = rng_();
+
         #pragma omp parallel
         {
-            std::mt19937_64 thread_rng(rng_() + omp_get_thread_num() + 37);
+            std::mt19937_64 thread_rng(seeds[omp_get_thread_num()]);
             std::normal_distribution<Real> thread_normal(0.0, 1.0);
             #pragma omp for schedule(static)
             for (Index i = 0; i < n * SPATIAL_DIM; ++i) {

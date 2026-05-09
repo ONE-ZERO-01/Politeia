@@ -48,3 +48,4 @@ examples/genesis_hyde_100k.csv
 examples/historical_100k.csv
 env.sh
 lsan_suppressions.txt
+push.sh

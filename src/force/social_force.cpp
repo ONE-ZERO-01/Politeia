@@ -49,6 +49,13 @@ Real compute_social_forces(
 
     constexpr Real F_MAX = 100.0;
 
+    // Soft-core minimum distance: prevents both force and energy singularity
+    // when particles overlap. r² is clamped to (0.5σ)², bounding the
+    // per-pair LJ energy to ~48ε — comparable to the well depth.
+    // Forces at r < r_min are already capped by F_MAX, so this primarily
+    // improves energy diagnostics without changing dynamics.
+    const Real r_min_sq = 0.25 * sigma2;
+
 #ifdef POLITEIA_USE_OPENMP
     // OpenMP 版本：每个粒子独立计算自己的邻居力（无 Newton 第三定律），
     // 计算量翻倍但完全消除写竞争，适合线程并行。
@@ -62,13 +69,14 @@ Real compute_social_forces(
 
         cells.for_neighbors_of(i, x_data, count, cutoff_sq,
             [&](Index j, Real dx, Real dy, Real r2) {
-                const Real sr2 = sigma2 / r2;
+                const Real r2_eff = std::max(r2, r_min_sq);
+                const Real sr2 = sigma2 / r2_eff;
                 const Real sr6 = sr2 * sr2 * sr2;
                 const Real sr12 = sr6 * sr6;
 
-                Real f_over_r = eps24 * (2.0 * sr12 - sr6) / r2;
+                Real f_over_r = eps24 * (2.0 * sr12 - sr6) / r2_eff;
 
-                const Real f_over_r_max = F_MAX / std::sqrt(r2);
+                const Real f_over_r_max = F_MAX / std::sqrt(r2_eff);
                 if (f_over_r > f_over_r_max) f_over_r = f_over_r_max;
                 if (f_over_r < -f_over_r_max) f_over_r = -f_over_r_max;
 
@@ -90,13 +98,14 @@ Real compute_social_forces(
 
     cells.for_each_pair(x_data, count, cutoff_sq,
         [&](Index i, Index j, Real dx, Real dy, Real r2) {
-            const Real sr2 = sigma2 / r2;
+            const Real r2_eff = std::max(r2, r_min_sq);
+            const Real sr2 = sigma2 / r2_eff;
             const Real sr6 = sr2 * sr2 * sr2;
             const Real sr12 = sr6 * sr6;
 
-            Real f_over_r = eps24 * (2.0 * sr12 - sr6) / r2;
+            Real f_over_r = eps24 * (2.0 * sr12 - sr6) / r2_eff;
 
-            const Real f_over_r_max = F_MAX / std::sqrt(r2);
+            const Real f_over_r_max = F_MAX / std::sqrt(r2_eff);
             if (f_over_r > f_over_r_max) f_over_r = f_over_r_max;
             if (f_over_r < -f_over_r_max) f_over_r = -f_over_r_max;
 

@@ -98,3 +98,23 @@ gtest_discover_tests(test_polity)
 add_executable(test_carrying_capacity test_carrying_capacity.cpp)
 target_link_libraries(test_carrying_capacity PRIVATE politeia_core GTest::gtest_main)
 gtest_discover_tests(test_carrying_capacity)
+
+# --- Test: Climate Grid ---
+add_executable(test_climate_grid test_climate_grid.cpp)
+target_link_libraries(test_climate_grid PRIVATE politeia_core GTest::gtest_main)
+gtest_discover_tests(test_climate_grid)
+
+# --- Test: River Field ---
+add_executable(test_river_field test_river_field.cpp)
+target_link_libraries(test_river_field PRIVATE politeia_core GTest::gtest_main)
+gtest_discover_tests(test_river_field)
+
+# --- Test: Checkpoint ---
+add_executable(test_checkpoint test_checkpoint.cpp)
+target_link_libraries(test_checkpoint PRIVATE politeia_core GTest::gtest_main)
+gtest_discover_tests(test_checkpoint)
+
+# --- Test: IC Loader ---
+add_executable(test_ic_loader test_ic_loader.cpp)
+target_link_libraries(test_ic_loader PRIVATE politeia_core GTest::gtest_main)
+gtest_discover_tests(test_ic_loader)

@@ -204,6 +204,9 @@ void ClimateGrid::load_ascii(const std::string& filepath) {
         }
     }
 
+    // Consume rest of current line after >> extraction to align for next getline-based header
+    { std::string skip; std::getline(file, skip); }
+
     int nr2, nc2;
     Real xll2, yll2, cs2;
     read_header(nr2, nc2, xll2, yll2, cs2);

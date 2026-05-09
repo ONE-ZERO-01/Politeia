@@ -165,6 +165,7 @@ TEST_F(LoyaltyTest, SuccessionHeirSelection) {
 
     std::vector<Index> dying = {4};
     Index successions = process_succession(*particles, dying);
+    (void)successions;
 
     EXPECT_EQ(successions, 1u);
     EXPECT_EQ(particles->superior(2), -1);
@@ -182,7 +183,7 @@ TEST_F(LoyaltyTest, SuccessionEstateDistribution) {
     Real w1_before = particles->wealth(1);
 
     std::vector<Index> dying = {4};
-    process_succession(*particles, dying);
+    (void)process_succession(*particles, dying);
 
     EXPECT_GT(particles->wealth(0) + particles->wealth(1),
               w0_before + w1_before);
@@ -196,6 +197,7 @@ TEST_F(LoyaltyTest, SuccessionChainedLeaders) {
 
     std::vector<Index> dying = {2};
     Index s = process_succession(*particles, dying);
+    (void)s;
     EXPECT_EQ(s, 1u);
 
     bool found_heir = false;

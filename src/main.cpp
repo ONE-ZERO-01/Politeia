@@ -27,6 +27,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <iomanip>
 #include <random>
 #include <chrono>
 #include <cmath>
@@ -413,7 +414,8 @@ int main(int argc, char* argv[]) {
 
     // Network analysis for hierarchy detection
     politeia::InteractionNetwork network;
-    const politeia::Index network_window = cfg.output_interval * cfg.network_window_factor;
+    const politeia::Index network_window = std::max(
+        cfg.output_interval * cfg.network_window_factor, politeia::Index(1));
 
     // Phase transition detection
     politeia::PhaseTransitionDetector phase_detector(20);
@@ -527,11 +529,38 @@ int main(int argc, char* argv[]) {
     constexpr politeia::Index MIN_REBALANCE_GAP = 50;
     politeia::Index steps_since_rebalance = 0;
 
+    // --- Validate intervals (prevent division by zero) ---
+    if (cfg.output_interval == 0) cfg.output_interval = 1;
+    if (cfg.compact_interval == 0) cfg.compact_interval = 100;
+    if (cfg.density_update_interval == 0) cfg.density_update_interval = 10;
+
     // --- Main time-stepping loop ---
     auto t_start = std::chrono::steady_clock::now();
     politeia::Index total_deaths = 0;
+    politeia::Index cached_global_N = init_lstats.global_total;
+
+    // Progress reporting interval: print a lightweight status line so the
+    // user can tell the simulation is alive between full output_interval dumps.
+    const politeia::Index progress_interval = std::max(
+        cfg.compact_interval, politeia::Index(100));
 
     for (politeia::Index step = start_step + 1; step <= cfg.total_steps; ++step) {
+        if (rank == 0 && step % progress_interval == 0
+            && step % cfg.output_interval != 0) {
+            auto t_now = std::chrono::steady_clock::now();
+            double wall = std::chrono::duration<double>(t_now - t_start).count();
+            double pct = 100.0 * step / cfg.total_steps;
+            double step_rate = (step - start_step) / std::max(wall, 1e-9);
+            double eta = (cfg.total_steps - step) / std::max(step_rate, 1e-9);
+            std::cout << "  [" << step << "/" << cfg.total_steps
+                      << "]  " << std::fixed << std::setprecision(1) << pct << "%"
+                      << "  N=" << cached_global_N
+                      << "  wall=" << std::setprecision(0) << wall << "s"
+                      << "  rate=" << std::setprecision(1) << step_rate << " step/s"
+                      << "  ETA=" << std::setprecision(0) << eta << "s"
+                      << std::defaultfloat << "\n" << std::flush;
+        }
+
         // 1. Langevin dynamics (positions + momenta)
         perf.start(politeia::PerfMonitor::Dynamics);
         auto state = integrator.step(particles, cells);
@@ -840,6 +869,9 @@ int main(int argc, char* argv[]) {
             particles.rebuild_gid_map();
             domain.discover_neighbors(particles, cfg.interaction_range);
             steps_since_rebalance = 0;
+
+            auto lstats = domain.compute_load_stats(particles.count());
+            cached_global_N = lstats.global_total;
         }
 
         // 9. Analysis + Output
@@ -859,6 +891,18 @@ int main(int argc, char* argv[]) {
         if (do_snapshot) {
             global_snap = politeia::gather_all_particles(particles, rank, nprocs);
         }
+
+        // MPI: reduce energies across all ranks before writing
+#ifdef POLITEIA_USE_MPI
+        if (do_output && nprocs > 1) {
+            double local_e[3] = {state.kinetic_energy, state.social_potential, state.terrain_potential};
+            double global_e[3];
+            MPI_Allreduce(local_e, global_e, 3, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+            state.kinetic_energy = global_e[0];
+            state.social_potential = global_e[1];
+            state.terrain_potential = global_e[2];
+        }
+#endif
 
         if (do_output && rank == 0) {
             politeia::Real time = step * cfg.dt;
